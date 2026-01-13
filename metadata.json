@@ -2,6 +2,7 @@
   "name": "Ozone Health",
   "description": "A production-grade Environmental Health Monitoring PWA using real-time API data and Gemini AI for health insights and location services.",
   "requestFramePermissions": [
-    "geolocation"
+    "geolocation",
+    "microphone"
   ]
 }

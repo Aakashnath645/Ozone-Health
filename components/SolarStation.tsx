@@ -31,7 +31,7 @@ const SolarStation: React.FC = () => {
   if (!weather) return <div className="p-10 text-center text-slate-500 font-thin">Data unavailable.</div>;
 
   return (
-    <div className="pt-safe px-6 pb-24 space-y-6 animate-fade-in min-h-full">
+    <div className="pt-safe px-6 space-y-6 animate-fade-in min-h-full">
        
        <div className="mt-8 mb-4">
           <h2 className="text-3xl font-light tracking-tight text-slate-800 dark:text-white">Solar Rhythm</h2>

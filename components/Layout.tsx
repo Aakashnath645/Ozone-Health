@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Wind, Flower2, Settings } from 'lucide-react';
+import { Home, Wind, Flower2, Settings, AudioWaveform } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -10,6 +10,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { to: "/", icon: Home },
     { to: "/air", icon: Wind },
     { to: "/pollen", icon: Flower2 },
+    { to: "/noise", icon: AudioWaveform },
     { to: "/settings", icon: Settings },
   ];
 
@@ -48,7 +49,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </main>
 
         {/* Floating Glass Navigation */}
-        <nav className="fixed md:absolute bottom-6 left-6 right-6 md:left-8 md:right-8 h-20 bg-white/30 dark:bg-black/30 backdrop-blur-xl rounded-3xl shadow-lg border border-white/40 dark:border-white/10 z-[90] flex items-center justify-between px-2 sm:px-6">
+        <nav className="fixed md:absolute bottom-6 left-6 right-6 md:left-8 md:right-8 h-20 bg-white/30 dark:bg-black/30 backdrop-blur-xl rounded-3xl shadow-lg border border-white/40 dark:border-white/10 z-[90] flex items-center justify-between px-2 sm:px-4">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -62,10 +63,10 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               }
             >
               {({ isActive }) => (
-                <div className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all duration-300 ${
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-2xl transition-all duration-300 ${
                    isActive ? "bg-white/50 dark:bg-white/10 shadow-sm backdrop-blur-md scale-105" : "group-active:scale-95"
                 }`}>
-                  <item.icon className="w-6 h-6" strokeWidth={2} />
+                  <item.icon className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2} />
                 </div>
               )}
             </NavLink>

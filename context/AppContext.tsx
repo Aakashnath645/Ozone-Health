@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { AppState, LocationData } from '../types';
 import { fetchAirQualityData, fetchWeatherData, fetchPollenData, reverseGeocode } from '../services/api';
 
@@ -37,50 +37,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     document.documentElement.classList.add(state.theme);
   }, [state.theme]);
 
-  // Robust GPS Check
-  useEffect(() => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          // Successfully got location
-          setState(s => ({
-            ...s,
-            location: {
-              lat: position.coords.latitude,
-              lon: position.coords.longitude,
-              city: '' // Empty city triggers reverse geocoding in fetchData
-            }
-          }));
-        },
-        (error) => {
-          console.warn("GPS Access denied or failed, using default location.", error);
-          // Proceed with default New York location without error blocking app
-        },
-        { 
-          enableHighAccuracy: false, // Faster
-          timeout: 10000, 
-          maximumAge: 60000 
-        }
-      );
+  // Robust Fetch Data Function
+  const fetchData = useCallback(async (targetLoc: LocationData, isBackground = false) => {
+    // Only show full loading screen for user-initiated or initial loads
+    if (!isBackground) {
+      setState(s => ({ ...s, loading: true, error: null }));
     }
-  }, []);
 
-  // Fetch Data
-  const fetchData = async () => {
-    setState(s => ({ ...s, loading: true, error: null }));
     try {
       // 1. Fetch Sensor Data
       const [weather, airQuality, pollen] = await Promise.all([
-        fetchWeatherData(state.location.lat, state.location.lon),
-        fetchAirQualityData(state.location.lat, state.location.lon),
-        fetchPollenData(state.location.lat, state.location.lon),
+        fetchWeatherData(targetLoc.lat, targetLoc.lon),
+        fetchAirQualityData(targetLoc.lat, targetLoc.lon),
+        fetchPollenData(targetLoc.lat, targetLoc.lon),
       ]);
 
-      // 2. Resolve City Name (Separate try/catch so sensors don't fail if map fails)
-      let city = state.location.city;
+      // 2. Resolve City Name
+      let city = targetLoc.city;
       if (!city || city === 'Unknown Location') {
         try {
-          city = await reverseGeocode(state.location.lat, state.location.lon);
+          city = await reverseGeocode(targetLoc.lat, targetLoc.lon);
         } catch (e) {
           console.warn("Reverse geocode failed", e);
           city = "Unknown Location";
@@ -92,26 +68,84 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         weather,
         airQuality,
         pollen,
-        location: { ...s.location, city },
+        location: { ...targetLoc, city },
         loading: false
       }));
     } catch (err) {
       console.error(err);
       setState(s => ({ ...s, error: 'Failed to load data', loading: false }));
     }
-  };
+  }, []);
 
+  // 1. GPS Watcher (Real-time Location)
   useEffect(() => {
-    fetchData();
+    let watchId: number;
+    if ("geolocation" in navigator) {
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const newLat = position.coords.latitude;
+          const newLon = position.coords.longitude;
+
+          setState(prev => {
+             // Calculate approximate distance to prevent API spam (Threshold ~500m / 0.005 deg)
+             const latDiff = Math.abs(newLat - prev.location.lat);
+             const lonDiff = Math.abs(newLon - prev.location.lon);
+             const isDefault = prev.location.city === 'New York' && prev.location.lat === 40.7128;
+             const significantMove = latDiff > 0.005 || lonDiff > 0.005;
+
+             // Update state only if moved significantly or if we are still on default location
+             if (isDefault || significantMove) {
+               return {
+                 ...prev,
+                 location: {
+                   lat: newLat,
+                   lon: newLon,
+                   city: '' // Empty city triggers re-resolution in fetchData
+                 }
+               };
+             }
+             return prev;
+          });
+        },
+        (error) => {
+          console.warn("GPS Watch error:", error);
+        },
+        { 
+          enableHighAccuracy: true,
+          timeout: 20000, 
+          maximumAge: 0 
+        }
+      );
+    }
+    return () => {
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+    };
+  }, []);
+
+  // 2. Trigger Fetch on Location Change (Coordinates updated by Watcher or Manual Search)
+  useEffect(() => {
+    // Determine if this is likely a background update (e.g. small GPS drift) or major change
+    // For simplicity, coordinate changes always trigger non-background fetch to update UI immediately
+    fetchData(state.location, false);
+    
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.location.lat, state.location.lon]);
+
+  // 3. Periodic Background Refresh (Every 5 minutes)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchData(state.location, true); // Silent update
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [state.location, fetchData]);
 
   const setLocation = (loc: LocationData) => setState(s => ({ ...s, location: loc }));
   const setTheme = (theme: 'light' | 'dark') => setState(s => ({ ...s, theme }));
   const setSensitiveMode = (mode: boolean) => setState(s => ({ ...s, sensitiveMode: mode }));
 
   return (
-    <AppContext.Provider value={{ ...state, setTheme, setSensitiveMode, setLocation, refreshData: fetchData }}>
+    <AppContext.Provider value={{ ...state, setTheme, setSensitiveMode, setLocation, refreshData: () => fetchData(state.location, false) }}>
       {children}
     </AppContext.Provider>
   );

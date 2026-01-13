@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const AirLab = lazy(() => import('./components/AirLab'));
 const BioGuard = lazy(() => import('./components/BioGuard'));
+const SonicSanctuary = lazy(() => import('./components/SonicSanctuary'));
 const Settings = lazy(() => import('./components/Settings'));
 
 // Wrapper to access context for Splash Logic
@@ -42,6 +43,7 @@ const AppContent: React.FC = () => {
               <Route path="/" element={<Dashboard />} />
               <Route path="/air" element={<AirLab />} />
               <Route path="/pollen" element={<BioGuard />} />
+              <Route path="/noise" element={<SonicSanctuary />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
